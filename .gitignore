@@ -1,0 +1,6 @@
+*.secret
+
+debug/
+target/
+**/*.rs.bk
+*.pdb
