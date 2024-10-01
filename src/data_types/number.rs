@@ -97,6 +97,34 @@ impl Encodable for i64 {
     }
 }
 
+impl Decodable for u8 {
+    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+        let mut buffer = [0];
+        return stream.read(&mut buffer).map(|_| buffer[0]);
+    }
+}
+
+impl Decodable for u16 {
+    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+        let mut buffer = [0; 2];
+        return stream.read(&mut buffer).map(|_| u16::from_be_bytes(buffer));
+    }
+}
+
+impl Encodable for u128 {
+    fn encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error> {
+        return stream.write_all(&self.to_be_bytes());
+    }
+}
+
+impl Decodable for u128 {
+    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+        let mut buffer = [0; 16];
+        stream.read(&mut buffer)?;
+        return Ok(u128::from_be_bytes(buffer));
+    }
+}
+
 #[test]
 fn read_write_var_int() {
     let expected = 183944198i32;
@@ -110,7 +138,5 @@ fn read_write_var_long() {
     let expected = 183944198i64;
     let mut stream: VecDeque<u8> = VecDeque::new();
     expected.encode(&mut stream).unwrap();
-    let stream_size = stream.len();
-    println!("stream size: {stream_size}");
     assert_eq!(expected, i64::decode(&mut stream).unwrap());
 }

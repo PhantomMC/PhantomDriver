@@ -1,4 +1,5 @@
+use crate::{data_types::decodec::Encodable, request::slp_history::SlpHistory};
+
 pub trait ProtocolResponse {
-    fn handle() -> Vec<u8>;
-    fn protocol_version() -> u16;
+    fn respond<E: Encodable>(self: &Self, history: SlpHistory) -> E;
 }

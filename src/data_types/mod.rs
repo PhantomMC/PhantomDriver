@@ -1,3 +1,3 @@
 pub mod decodec;
+pub mod number;
 pub mod string;
-pub mod var_int;

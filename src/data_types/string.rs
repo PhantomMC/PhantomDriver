@@ -1,6 +1,7 @@
 use std::{
     collections::VecDeque,
     io::{Error, Read, Write},
+    process::Output,
 };
 
 use super::decodec::{Decodable, Encodable};

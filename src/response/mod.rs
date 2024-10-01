@@ -1,2 +1,3 @@
+pub mod login_failure;
 pub mod protocol;
-pub mod registry;
+pub mod status;
