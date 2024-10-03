@@ -7,3 +7,11 @@ pub trait Decodable: Sized {
 pub trait Encodable: Sized {
     fn encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error>;
 }
+
+pub trait FixedSizeDecodable<const N: usize>: Sized {
+    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error>;
+}
+
+pub trait FixedSizeEncodable<const N: usize>: Sized {
+    fn fixed_encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error>;
+}

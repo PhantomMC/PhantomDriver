@@ -5,7 +5,7 @@ use std::{
 
 use minecrevy_text::Text;
 use phantom_core::{
-    data_types::decodec::{Decodable, Encodable},
+    data_types::decodec::{Decodable, Encodable, FixedSizeDecodable},
     request::{handshake::Handshake, login::Login, ping::Ping},
     response::{
         login_failure::LoginFailure,
@@ -37,7 +37,7 @@ pub async fn main() {
 
 async fn handle_connection(mut stream: TcpStream) -> Result<(), Error> {
     let mut packet = take_packet(&mut stream)?;
-    let packet_id = u8::decode(&mut packet)?;
+    let packet_id = u8::fixed_decode(&mut packet)?;
     if packet_id != 0x00 {
         return Err(Error::new(
             ErrorKind::InvalidData,
@@ -60,7 +60,7 @@ fn take_packet(stream: &mut TcpStream) -> Result<Take<&mut TcpStream>, Error> {
 
 fn handle_status(stream: &mut TcpStream, handshake: Handshake) -> Result<(), Error> {
     let mut packet = take_packet(stream)?;
-    let packet_id = u8::decode(&mut packet)?;
+    let packet_id = u8::fixed_decode(&mut packet)?;
     if packet_id == 0x00 {
         let status_response = Status {
             version: Version {
@@ -72,13 +72,13 @@ fn handle_status(stream: &mut TcpStream, handshake: Handshake) -> Result<(), Err
                 online: 1,
                 sample: vec![],
             },
-            decription: Text::string("Hello world"),
+            description: Text::string("Hello world"),
             enforces_secure_chat: true,
             favicon: Option::None,
         };
         status_response.encode(stream)?;
         let mut packet = take_packet(stream)?;
-        u8::decode(&mut packet)?;
+        let packet_id = u8::fixed_decode(&mut packet)?;
         if packet_id != 0x01 {
             return Err(Error::new(
                 ErrorKind::InvalidData,
@@ -98,7 +98,7 @@ fn handle_status(stream: &mut TcpStream, handshake: Handshake) -> Result<(), Err
 
 fn handle_login(stream: &mut TcpStream, handshake: Handshake) -> Result<(), Error> {
     let mut packet = take_packet(stream)?;
-    let packet_id = u8::decode(&mut packet)?;
+    let packet_id = u8::fixed_decode(&mut packet)?;
     if packet_id != 0x00 {
         return Err(Error::new(
             ErrorKind::InvalidData,

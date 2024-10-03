@@ -14,7 +14,8 @@ const PACKET_ID: u8 = 0x00;
 pub struct Status {
     pub version: Version,
     pub players: Players,
-    pub decription: Text,
+    pub description: Text,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub favicon: Option<String>,
     #[serde(rename = "enforcesSecureChat")]
     pub enforces_secure_chat: bool,
@@ -43,7 +44,9 @@ impl Encodable for Status {
     fn encode<S: std::io::Write>(self: &Self, stream: &mut S) -> Result<(), std::io::Error> {
         let mut payload = VecDeque::new();
         payload.write(&[PACKET_ID])?;
-        serde_json::to_string(self).unwrap().encode(&mut payload)?;
+        let json = serde_json::to_string(self).unwrap();
+        println!("{json}");
+        json.encode(&mut payload)?;
         let payload_size = payload.len();
         (payload_size as i32).encode(stream)?;
         return stream.write(payload.fill_buf()?).map(|_| ());

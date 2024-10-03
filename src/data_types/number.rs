@@ -3,7 +3,7 @@ use std::{
     io::{Error, ErrorKind, Read, Write},
 };
 
-use super::decodec::{Decodable, Encodable};
+use super::decodec::{Decodable, Encodable, FixedSizeDecodable, FixedSizeEncodable};
 
 const SEGMENT_BITS: u8 = 0x7F;
 const CONTINUE_BIT: u8 = 0x80;
@@ -13,7 +13,7 @@ impl Decodable for i32 {
         let mut value = 0;
         let mut position = 0;
         loop {
-            let current_byte = u8::decode(stream)?;
+            let current_byte = u8::fixed_decode(stream)?;
             value |= i32::from(current_byte & SEGMENT_BITS) << position;
             if (current_byte & CONTINUE_BIT) == 0 {
                 break;
@@ -32,7 +32,7 @@ impl Decodable for i64 {
         let mut value = 0;
         let mut position = 0;
         loop {
-            let current_byte = u8::decode(stream)?;
+            let current_byte = u8::fixed_decode(stream)?;
             value |= i64::from(current_byte & SEGMENT_BITS) << position;
             if (current_byte & CONTINUE_BIT) == 0 {
                 break;
@@ -83,8 +83,8 @@ impl Encodable for i64 {
     }
 }
 
-impl Decodable for u8 {
-    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+impl FixedSizeDecodable<1> for u8 {
+    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0];
         let amount_read = stream.read(&mut buffer)?;
         if amount_read != 1 {
@@ -94,8 +94,8 @@ impl Decodable for u8 {
     }
 }
 
-impl Decodable for u16 {
-    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+impl FixedSizeDecodable<2> for u16 {
+    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0; 2];
         let amount_read = stream.read(&mut buffer)?;
         if amount_read != 2 {
@@ -105,20 +105,37 @@ impl Decodable for u16 {
     }
 }
 
-impl Encodable for u128 {
-    fn encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error> {
+impl FixedSizeEncodable<16> for u128 {
+    fn fixed_encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error> {
         return stream.write_all(&self.to_be_bytes());
     }
 }
 
-impl Decodable for u128 {
-    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+impl FixedSizeDecodable<16> for u128 {
+    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0; 16];
         let amount_read = stream.read(&mut buffer)?;
         if amount_read != 16 {
             return Err(Error::new(ErrorKind::InvalidData, "empty data for u128"));
         }
         return Ok(u128::from_be_bytes(buffer));
+    }
+}
+
+impl FixedSizeDecodable<8> for i64 {
+    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+        let mut buffer = [0; 8];
+        let amount_read = stream.read(&mut buffer)?;
+        if amount_read != 8 {
+            return Err(Error::new(ErrorKind::InvalidData, "empty data for i64"));
+        }
+        return Ok(i64::from_be_bytes(buffer));
+    }
+}
+
+impl FixedSizeEncodable<8> for i64 {
+    fn fixed_encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error> {
+        return stream.write_all(&self.to_be_bytes());
     }
 }
 
