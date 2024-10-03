@@ -13,16 +13,9 @@ impl Decodable for i32 {
         let mut value = 0;
         let mut position = 0;
         loop {
-            let mut current_byte = [0; 1];
-            let read_amount = stream.read(&mut current_byte)?;
-            if read_amount == 0 {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    "Unexpected interupt for reading varint",
-                ));
-            }
-            value |= i32::from(current_byte[0] & SEGMENT_BITS) << position;
-            if (current_byte[0] & CONTINUE_BIT) == 0 {
+            let current_byte = u8::decode(stream)?;
+            value |= i32::from(current_byte & SEGMENT_BITS) << position;
+            if (current_byte & CONTINUE_BIT) == 0 {
                 break;
             };
             position += 7;
@@ -39,16 +32,9 @@ impl Decodable for i64 {
         let mut value = 0;
         let mut position = 0;
         loop {
-            let mut current_byte = [0; 1];
-            let read_amount = stream.read(&mut current_byte)?;
-            if read_amount == 0 {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    "Unexpected interupt for reading varint",
-                ));
-            }
-            value |= i64::from(current_byte[0] & SEGMENT_BITS) << position;
-            if (current_byte[0] & CONTINUE_BIT) == 0 {
+            let current_byte = u8::decode(stream)?;
+            value |= i64::from(current_byte & SEGMENT_BITS) << position;
+            if (current_byte & CONTINUE_BIT) == 0 {
                 break;
             };
             position += 7;
@@ -100,14 +86,22 @@ impl Encodable for i64 {
 impl Decodable for u8 {
     fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0];
-        return stream.read(&mut buffer).map(|_| buffer[0]);
+        let amount_read = stream.read(&mut buffer)?;
+        if amount_read != 1 {
+            return Err(Error::new(ErrorKind::InvalidData, "empty data for u8"));
+        }
+        return Ok(buffer[0]);
     }
 }
 
 impl Decodable for u16 {
     fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0; 2];
-        return stream.read(&mut buffer).map(|_| u16::from_be_bytes(buffer));
+        let amount_read = stream.read(&mut buffer)?;
+        if amount_read != 2 {
+            return Err(Error::new(ErrorKind::InvalidData, "empty data for u16"));
+        }
+        return Ok(u16::from_be_bytes(buffer));
     }
 }
 
@@ -120,7 +114,10 @@ impl Encodable for u128 {
 impl Decodable for u128 {
     fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0; 16];
-        stream.read(&mut buffer)?;
+        let amount_read = stream.read(&mut buffer)?;
+        if amount_read != 16 {
+            return Err(Error::new(ErrorKind::InvalidData, "empty data for u128"));
+        }
         return Ok(u128::from_be_bytes(buffer));
     }
 }

@@ -12,31 +12,31 @@ const PACKET_ID: u8 = 0x00;
 
 #[derive(Serialize)]
 pub struct Status {
-    version: Version,
-    players: Players,
-    decription: Text,
-    favicon: String,
+    pub version: Version,
+    pub players: Players,
+    pub decription: Text,
+    pub favicon: Option<String>,
     #[serde(rename = "enforcesSecureChat")]
-    enforces_secure_chat: bool,
+    pub enforces_secure_chat: bool,
 }
 
 #[derive(Serialize)]
 pub struct Version {
-    name: String,
-    protocol: i32,
+    pub name: String,
+    pub protocol: i32,
 }
 
 #[derive(Serialize)]
 pub struct Player {
-    name: String,
-    id: String,
+    pub name: String,
+    pub id: String,
 }
 
 #[derive(Serialize)]
 pub struct Players {
-    max: i32,
-    online: i32,
-    sample: Vec<Player>,
+    pub max: i32,
+    pub online: i32,
+    pub sample: Vec<Player>,
 }
 
 impl Encodable for Status {
@@ -46,6 +46,6 @@ impl Encodable for Status {
         serde_json::to_string(self).unwrap().encode(&mut payload)?;
         let payload_size = payload.len();
         (payload_size as i32).encode(stream)?;
-        return stream.write_all(payload.fill_buf()?);
+        return stream.write(payload.fill_buf()?).map(|_| ());
     }
 }

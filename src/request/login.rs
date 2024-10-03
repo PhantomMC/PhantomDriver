@@ -1,8 +1,8 @@
 use crate::data_types::decodec::Decodable;
 
 pub struct Login {
-    player_name: String,
-    player_uuid: u128,
+    pub player_name: String,
+    pub player_uuid: u128,
 }
 
 impl Decodable for Login {

@@ -1,3 +1,3 @@
 pub mod login_failure;
-pub mod protocol;
+pub mod pong;
 pub mod status;
