@@ -1,6 +1,4 @@
-use std::collections::VecDeque;
-
-use tokio::io::{simplex, AsyncWriteExt, BufStream, BufWriter, Error, SimplexStream};
+use tokio::io::{AsyncWriteExt, Error};
 
 use crate::{
     data_types::decodec::{Encodable, FixedSizeEncodable},
