@@ -1,4 +1,4 @@
-use std::io::{Error, Read};
+use tokio::io::{AsyncReadExt, Error};
 
 use crate::data_types::decodec::{Decodable, FixedSizeDecodable};
 
@@ -7,8 +7,8 @@ pub struct Ping {
 }
 
 impl Decodable for Ping {
-    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
-        let payload = i64::fixed_decode(stream)?;
+    async fn decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error> {
+        let payload = i64::fixed_decode(stream).await?;
         return Ok(Self { payload });
     }
 }

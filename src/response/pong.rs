@@ -1,4 +1,6 @@
-use std::{collections::VecDeque, io::BufRead};
+use std::collections::VecDeque;
+
+use tokio::io::{simplex, AsyncWriteExt, BufStream, BufWriter, Error, SimplexStream};
 
 use crate::{
     data_types::decodec::{Encodable, FixedSizeEncodable},
@@ -10,13 +12,13 @@ pub struct Pong {
 }
 
 impl Encodable for Pong {
-    fn encode<S: std::io::Write>(self: &Self, stream: &mut S) -> Result<(), std::io::Error> {
-        let mut packet = VecDeque::new();
-        0x01.encode(&mut packet)?;
-        self.payload.fixed_encode(&mut packet)?;
+    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<(), Error> {
+        let mut packet = Vec::new();
+        0x01.encode(&mut packet).await?;
+        self.payload.fixed_encode(&mut packet).await?;
         let packet_length = packet.len();
-        (packet_length as i32).encode(stream)?;
-        stream.write(packet.fill_buf()?)?;
+        (packet_length as i32).encode(stream).await?;
+        stream.write(&packet).await?;
         return Ok(());
     }
 }

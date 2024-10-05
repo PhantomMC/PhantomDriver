@@ -46,13 +46,11 @@ impl Decodable for i64 {
 }
 
 impl Encodable for i32 {
-    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<usize, Error> {
+    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<(), Error> {
         let mut value = *self;
-        let mut byte_size = 0;
         loop {
-            byte_size += 1;
             if (value & !i32::from(SEGMENT_BITS)) == 0 {
-                return (value as u8).fixed_encode(stream).await.map(|_| byte_size);
+                return (value as u8).fixed_encode(stream).await.map(|_| ());
             }
             (((value & i32::from(SEGMENT_BITS)) as u8) | CONTINUE_BIT)
                 .fixed_encode(stream)
@@ -63,14 +61,12 @@ impl Encodable for i32 {
 }
 
 impl Encodable for i64 {
-    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<usize, Error> {
+    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<(), Error> {
         let mut value = *self;
-        let mut byte_size = 0;
         loop {
-            byte_size += 1;
             let temp = !i64::from(SEGMENT_BITS);
             if (value & temp) == 0 {
-                return (value as u8).fixed_encode(stream).await.map(|_| byte_size);
+                return (value as u8).fixed_encode(stream).await.map(|_| ());
             }
             (((value & i64::from(SEGMENT_BITS)) as u8) | CONTINUE_BIT)
                 .fixed_encode(stream)

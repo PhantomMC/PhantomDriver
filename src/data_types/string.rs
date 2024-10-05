@@ -19,12 +19,11 @@ async fn read_string_with_length<S: AsyncReadExt + Unpin>(
 }
 
 impl Encodable for String {
-    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<usize, Error> {
+    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<(), Error> {
         let bytes = self.as_bytes();
-        let bytes_len = bytes.len();
-        let var_int_size = (bytes_len as i32).encode(stream).await?;
-        stream.write_all(bytes);
-        return Ok(var_int_size + bytes_len);
+        (bytes.len() as i32).encode(stream).await?;
+        stream.write_all(bytes).await?;
+        return Ok(());
     }
 }
 

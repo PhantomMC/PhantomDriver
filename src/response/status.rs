@@ -1,10 +1,6 @@
-use std::{
-    collections::VecDeque,
-    io::{BufRead, Write},
-};
-
 use minecrevy_text::Text;
 use serde::Serialize;
+use tokio::io::{AsyncWrite, AsyncWriteExt, Error};
 
 use crate::data_types::decodec::Encodable;
 
@@ -41,14 +37,12 @@ pub struct Players {
 }
 
 impl Encodable for Status {
-    fn encode<S: std::io::Write>(self: &Self, stream: &mut S) -> Result<(), std::io::Error> {
-        let mut payload = VecDeque::new();
-        payload.write(&[PACKET_ID])?;
+    async fn encode<S: AsyncWrite + Unpin>(self: &Self, stream: &mut S) -> Result<(), Error> {
+        let mut payload = Vec::new();
+        payload.write(&[PACKET_ID]).await?;
         let json = serde_json::to_string(self).unwrap();
-        println!("{json}");
-        json.encode(&mut payload)?;
-        let payload_size = payload.len();
-        (payload_size as i32).encode(stream)?;
-        return stream.write(payload.fill_buf()?).map(|_| ());
+        json.encode(&mut payload).await?;
+        (payload.len() as i32).encode(stream).await?;
+        return stream.write(&payload).await.map(|_| ());
     }
 }

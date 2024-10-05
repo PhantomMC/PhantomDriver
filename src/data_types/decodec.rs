@@ -5,10 +5,7 @@ pub trait Decodable: Sized {
 }
 
 pub trait Encodable: Sized {
-    async fn encode<S: AsyncWriteExt + Unpin>(
-        self: &Self,
-        stream: &mut S,
-    ) -> Result<(usize), Error>;
+    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<(), Error>;
 }
 
 pub trait FixedSizeDecodable<const N: usize>: Sized {
