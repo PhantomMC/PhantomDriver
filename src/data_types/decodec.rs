@@ -1,17 +1,23 @@
-use std::io::{Error, Read, Write};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, Error};
 
 pub trait Decodable: Sized {
-    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error>;
+    async fn decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error>;
 }
 
 pub trait Encodable: Sized {
-    fn encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error>;
+    async fn encode<S: AsyncWriteExt + Unpin>(
+        self: &Self,
+        stream: &mut S,
+    ) -> Result<(usize), Error>;
 }
 
 pub trait FixedSizeDecodable<const N: usize>: Sized {
-    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error>;
+    async fn fixed_decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error>;
 }
 
 pub trait FixedSizeEncodable<const N: usize>: Sized {
-    fn fixed_encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error>;
+    async fn fixed_encode<S: AsyncWriteExt + Unpin>(
+        self: &Self,
+        stream: &mut S,
+    ) -> Result<(), Error>;
 }

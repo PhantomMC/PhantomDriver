@@ -1,7 +1,6 @@
-use std::{
-    collections::VecDeque,
-    io::{Error, ErrorKind, Read, Write},
-};
+use std::io::ErrorKind;
+
+use tokio::io::{AsyncReadExt, AsyncWriteExt, Error};
 
 use super::decodec::{Decodable, Encodable, FixedSizeDecodable, FixedSizeEncodable};
 
@@ -9,11 +8,11 @@ const SEGMENT_BITS: u8 = 0x7F;
 const CONTINUE_BIT: u8 = 0x80;
 
 impl Decodable for i32 {
-    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+    async fn decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error> {
         let mut value = 0;
         let mut position = 0;
         loop {
-            let current_byte = u8::fixed_decode(stream)?;
+            let current_byte = u8::fixed_decode(stream).await?;
             value |= i32::from(current_byte & SEGMENT_BITS) << position;
             if (current_byte & CONTINUE_BIT) == 0 {
                 break;
@@ -28,11 +27,11 @@ impl Decodable for i32 {
 }
 
 impl Decodable for i64 {
-    fn decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+    async fn decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error> {
         let mut value = 0;
         let mut position = 0;
         loop {
-            let current_byte = u8::fixed_decode(stream)?;
+            let current_byte = u8::fixed_decode(stream).await?;
             value |= i64::from(current_byte & SEGMENT_BITS) << position;
             if (current_byte & CONTINUE_BIT) == 0 {
                 break;
@@ -47,46 +46,44 @@ impl Decodable for i64 {
 }
 
 impl Encodable for i32 {
-    fn encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error> {
+    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<usize, Error> {
         let mut value = *self;
+        let mut byte_size = 0;
         loop {
+            byte_size += 1;
             if (value & !i32::from(SEGMENT_BITS)) == 0 {
-                return stream.write(&[value as u8; 1]).map(|_| ());
+                return (value as u8).fixed_encode(stream).await.map(|_| byte_size);
             }
-            let err = stream
-                .write(&[((value & i32::from(SEGMENT_BITS)) as u8) | CONTINUE_BIT; 1])
-                .err();
-            if err.is_some() {
-                return Err(err.unwrap());
-            }
+            (((value & i32::from(SEGMENT_BITS)) as u8) | CONTINUE_BIT)
+                .fixed_encode(stream)
+                .await?;
             value = value >> 7;
         }
     }
 }
 
 impl Encodable for i64 {
-    fn encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error> {
+    async fn encode<S: AsyncWriteExt + Unpin>(self: &Self, stream: &mut S) -> Result<usize, Error> {
         let mut value = *self;
+        let mut byte_size = 0;
         loop {
+            byte_size += 1;
             let temp = !i64::from(SEGMENT_BITS);
             if (value & temp) == 0 {
-                return stream.write(&[value as u8; 1]).map(|_| ());
+                return (value as u8).fixed_encode(stream).await.map(|_| byte_size);
             }
-            let err = stream
-                .write(&[((value & i64::from(SEGMENT_BITS)) as u8) | CONTINUE_BIT; 1])
-                .err();
-            if err.is_some() {
-                return Err(err.unwrap());
-            }
+            (((value & i64::from(SEGMENT_BITS)) as u8) | CONTINUE_BIT)
+                .fixed_encode(stream)
+                .await?;
             value = value >> 7;
         }
     }
 }
 
 impl FixedSizeDecodable<1> for u8 {
-    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+    async fn fixed_decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0];
-        let amount_read = stream.read(&mut buffer)?;
+        let amount_read = stream.read(&mut buffer).await?;
         if amount_read != 1 {
             return Err(Error::new(ErrorKind::InvalidData, "empty data for u8"));
         }
@@ -94,10 +91,19 @@ impl FixedSizeDecodable<1> for u8 {
     }
 }
 
+impl FixedSizeEncodable<1> for u8 {
+    async fn fixed_encode<S: AsyncWriteExt + Unpin>(
+        self: &Self,
+        stream: &mut S,
+    ) -> Result<(), Error> {
+        return stream.write(&self.to_be_bytes()).await.map(|_| ());
+    }
+}
+
 impl FixedSizeDecodable<2> for u16 {
-    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+    async fn fixed_decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0; 2];
-        let amount_read = stream.read(&mut buffer)?;
+        let amount_read = stream.read(&mut buffer).await?;
         if amount_read != 2 {
             return Err(Error::new(ErrorKind::InvalidData, "empty data for u16"));
         }
@@ -106,15 +112,18 @@ impl FixedSizeDecodable<2> for u16 {
 }
 
 impl FixedSizeEncodable<16> for u128 {
-    fn fixed_encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error> {
-        return stream.write_all(&self.to_be_bytes());
+    async fn fixed_encode<S: AsyncWriteExt + Unpin>(
+        self: &Self,
+        stream: &mut S,
+    ) -> Result<(), Error> {
+        return stream.write(&self.to_be_bytes()).await.map(|_| ());
     }
 }
 
 impl FixedSizeDecodable<16> for u128 {
-    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+    async fn fixed_decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0; 16];
-        let amount_read = stream.read(&mut buffer)?;
+        let amount_read = stream.read(&mut buffer).await?;
         if amount_read != 16 {
             return Err(Error::new(ErrorKind::InvalidData, "empty data for u128"));
         }
@@ -123,9 +132,9 @@ impl FixedSizeDecodable<16> for u128 {
 }
 
 impl FixedSizeDecodable<8> for i64 {
-    fn fixed_decode<S: Read>(stream: &mut S) -> Result<Self, Error> {
+    async fn fixed_decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, Error> {
         let mut buffer = [0; 8];
-        let amount_read = stream.read(&mut buffer)?;
+        let amount_read = stream.read(&mut buffer).await?;
         if amount_read != 8 {
             return Err(Error::new(ErrorKind::InvalidData, "empty data for i64"));
         }
@@ -134,23 +143,26 @@ impl FixedSizeDecodable<8> for i64 {
 }
 
 impl FixedSizeEncodable<8> for i64 {
-    fn fixed_encode<S: Write>(self: &Self, stream: &mut S) -> Result<(), Error> {
-        return stream.write_all(&self.to_be_bytes());
+    async fn fixed_encode<S: AsyncWriteExt + Unpin>(
+        self: &Self,
+        stream: &mut S,
+    ) -> Result<(), Error> {
+        return stream.write(&self.to_be_bytes()).await.map(|_| ());
     }
 }
 
-#[test]
-fn read_write_var_int() {
+#[tokio::test]
+async fn read_write_var_int() {
     let expected = 183944198i32;
-    let mut stream: VecDeque<u8> = VecDeque::new();
-    expected.encode(&mut stream).unwrap();
-    assert_eq!(expected, i32::decode(&mut stream).unwrap());
+    let (mut client, mut server) = tokio::io::duplex(100000);
+    expected.encode(&mut client).await.unwrap();
+    assert_eq!(expected, i32::decode(&mut server).await.unwrap());
 }
 
-#[test]
-fn read_write_var_long() {
+#[tokio::test]
+async fn read_write_var_long() {
     let expected = 183944198i64;
-    let mut stream: VecDeque<u8> = VecDeque::new();
-    expected.encode(&mut stream).unwrap();
-    assert_eq!(expected, i64::decode(&mut stream).unwrap());
+    let (mut client, mut server) = tokio::io::duplex(100000);
+    expected.encode(&mut client).await.unwrap();
+    assert_eq!(expected, i64::decode(&mut server).await.unwrap());
 }
