@@ -1,6 +1,10 @@
+use base64::{prelude::BASE64_STANDARD, Engine};
 use minecrevy_text::Text;
 use serde::Serialize;
-use tokio::io::{AsyncWrite, AsyncWriteExt, Error};
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, AsyncWrite, AsyncWriteExt, Error},
+};
 
 use crate::data_types::decodec::Encodable;
 
@@ -45,4 +49,13 @@ impl Encodable for Status {
         (payload.len() as i32).encode(stream).await?;
         return stream.write(&payload).await.map(|_| ());
     }
+}
+
+pub async fn read_favicon_to_base64(mut file: File) -> Result<String, Error> {
+    let mut buffer = Vec::new();
+    file.read(&mut buffer).await?;
+    return Ok(format!(
+        "data:image/png;base64,{}",
+        BASE64_STANDARD.encode(buffer)
+    ));
 }
