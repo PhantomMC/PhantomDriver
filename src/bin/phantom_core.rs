@@ -24,7 +24,7 @@ struct Arguments {
     port: u16,
 
     #[arg(short, long)]
-    address: String,
+    addr: String,
 
     #[arg(long)]
     db_addr: String,
@@ -34,6 +34,12 @@ struct Arguments {
 
     #[arg(long)]
     db_pass: String,
+
+    #[arg(long)]
+    db_user: String,
+
+    #[arg(long)]
+    db_name: String,
 }
 
 #[tokio::main]
@@ -41,9 +47,11 @@ pub async fn main() {
     let args = Arguments::parse();
     let mut db_config = Config::new();
     db_config
-        .dbname(args.db_addr)
-        .port(args.port)
-        .password(args.db_pass);
+        .dbname(args.db_name)
+        .host(args.db_addr)
+        .port(args.db_port)
+        .password(args.db_pass)
+        .user(args.db_user);
     let (client, connection) = db_config.connect(NoTls).await.unwrap();
 
     tokio::spawn(async move {
@@ -58,7 +66,7 @@ pub async fn main() {
     let client_arc = Arc::new(client);
     let uuid_gen = Arc::new(UuidPicker::new());
 
-    let listener = TcpListener::bind(format!("{}:{}", args.address, args.port))
+    let listener = TcpListener::bind(format!("{}:{}", args.addr, args.port))
         .await
         .unwrap();
     loop {

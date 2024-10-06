@@ -1,10 +1,10 @@
-CREATE TABLE IF NOT EXISTS Users (
-    id SERIAL,
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
     hashcode BIGINT
 );
 
-CREATE TABLE IF NOT EXISTS Responses (
-    id SERIAL,
+CREATE TABLE IF NOT EXISTS responses (
+    id SERIAL PRIMARY KEY,
     version_name TEXT,
     protocol BOOLEAN,
     hover_text TEXT[],
@@ -16,14 +16,14 @@ CREATE TABLE IF NOT EXISTS Responses (
     disconnect_msg JSON
 );
 
-CREATE TABLE IF NOT EXISTS AdressNames (
+CREATE TABLE IF NOT EXISTS adress_names (
     address_name TEXT PRIMARY KEY,
     user_id INTEGER,
     response_id INTEGER,
     CONSTRAINT users_fk 
         FOREIGN KEY(user_id)
-            REFERENCES Users(id),
+            REFERENCES users(id),
     CONSTRAINT response_fk 
         FOREIGN KEY(response_id)
-            REFERENCES Responses(id)
+            REFERENCES responses(id)
 );
