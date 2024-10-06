@@ -18,3 +18,11 @@ impl Encodable for LoginFailure {
         return Ok(());
     }
 }
+
+impl Default for LoginFailure {
+    fn default() -> Self {
+        Self {
+            reason: Text::string("Placeholder message"),
+        }
+    }
+}

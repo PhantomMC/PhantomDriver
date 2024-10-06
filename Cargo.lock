@@ -488,6 +488,7 @@ dependencies = [
  "base64",
  "clap",
  "minecrevy_text",
+ "rand",
  "serde",
  "serde_json",
  "tokio",
@@ -551,6 +552,8 @@ dependencies = [
  "bytes",
  "fallible-iterator",
  "postgres-protocol",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

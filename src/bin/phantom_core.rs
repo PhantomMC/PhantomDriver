@@ -1,21 +1,21 @@
-use std::{fmt::format, io::ErrorKind};
+use std::{io::ErrorKind, sync::Arc};
 
 use clap::Parser;
-use minecrevy_text::Text;
 use phantom_core::{
     data_types::decodec::{Decodable, Encodable, FixedSizeDecodable},
     request::{handshake::Handshake, login::Login, ping::Ping},
     response::{
         login_failure::LoginFailure,
         pong::Pong,
-        status::{Players, Status, Version},
+        status::{Status, UuidPicker},
     },
+    sql::from_sql::FromSql,
 };
 use tokio::{
     io::{AsyncReadExt, Error, Take},
     net::{TcpListener, TcpStream},
 };
-use tokio_postgres::{Client, Config, GenericClient, NoTls};
+use tokio_postgres::{Client, Config, NoTls};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -51,7 +51,12 @@ pub async fn main() {
             eprintln!("connection error: {}", e);
         }
     });
-    client.batch_execute(include_str!("./resources/init.sql"));
+    client
+        .batch_execute(include_str!("./resources/init.sql"))
+        .await
+        .unwrap();
+    let client_arc = Arc::new(client);
+    let uuid_gen = Arc::new(UuidPicker::new());
 
     let listener = TcpListener::bind(format!("{}:{}", args.address, args.port))
         .await
@@ -65,11 +70,19 @@ pub async fn main() {
             }
             continue;
         }
-        tokio::task::spawn(handle_connection(stream.unwrap().0, &client));
+        tokio::task::spawn(handle_connection(
+            stream.unwrap().0,
+            client_arc.clone(),
+            uuid_gen.clone(),
+        ));
     }
 }
 
-async fn handle_connection(mut stream: TcpStream, client: &Client) -> Result<(), Error> {
+async fn handle_connection(
+    mut stream: TcpStream,
+    client: Arc<Client>,
+    uuid_gen: Arc<UuidPicker>,
+) -> Result<(), Error> {
     let mut packet = take_packet(&mut stream).await?;
     let packet_id = u8::fixed_decode(&mut packet).await?;
     if packet_id != 0x00 {
@@ -80,7 +93,7 @@ async fn handle_connection(mut stream: TcpStream, client: &Client) -> Result<(),
     }
     let handshake = Handshake::decode(&mut packet).await?;
     if handshake.next_state == 1 {
-        handle_status(&mut stream, handshake, client).await?
+        handle_status(&mut stream, handshake, client, uuid_gen).await?
     } else if handshake.next_state == 2 {
         handle_login(&mut stream, handshake, client).await?;
     }
@@ -95,26 +108,24 @@ async fn take_packet(stream: &mut TcpStream) -> Result<Take<&mut TcpStream>, Err
 async fn handle_status(
     stream: &mut TcpStream,
     handshake: Handshake,
-    client: &Client,
+    client: Arc<Client>,
+    uuid_gen: Arc<UuidPicker>,
 ) -> Result<(), Error> {
     let mut packet = take_packet(stream).await?;
     let packet_id = u8::fixed_decode(&mut packet).await?;
     if packet_id == 0x00 {
-        let status_response = Status {
-            version: Version {
-                name: String::from("version text"),
-                protocol: handshake.protocol_version,
-            },
-            players: Players {
-                max: 1,
-                online: 1,
-                sample: vec![],
-            },
-            description: Text::string("Hello world"),
-            enforces_secure_chat: true,
-            favicon: Option::None,
+        let query = client
+            .query(
+                include_str!("resources/select_status.sql"),
+                &[&handshake.server_address],
+            )
+            .await
+            .map_err(|err| Error::new(ErrorKind::Other, err))?;
+        let status = match query.get(0) {
+            Some(row) => Status::from_sql(row, handshake, uuid_gen).await?,
+            None => Status::default(),
         };
-        status_response.encode(stream).await?;
+        status.encode(stream).await?;
         let mut packet = take_packet(stream).await?;
         let packet_id = u8::fixed_decode(&mut packet).await?;
         if packet_id != 0x01 {
@@ -137,7 +148,7 @@ async fn handle_status(
 async fn handle_login(
     stream: &mut TcpStream,
     handshake: Handshake,
-    client: &Client,
+    client: Arc<Client>,
 ) -> Result<(), Error> {
     let mut packet = take_packet(stream).await?;
     let packet_id = u8::fixed_decode(&mut packet).await?;
@@ -148,9 +159,16 @@ async fn handle_login(
         ));
     }
     let login = Login::decode(&mut packet).await?;
-    let player_name = login.player_name;
-    let login_failure = LoginFailure {
-        reason: Text::string(format!("Hello {player_name}!")),
+    let query = client
+        .query(
+            include_str!("./resources/select_disconnect.sql"),
+            &[&handshake.server_address],
+        )
+        .await
+        .map_err(|err| Error::new(ErrorKind::Other, err))?;
+    let login_failure = match query.get(0) {
+        Some(row) => LoginFailure::from_sql(row, handshake, login).await?,
+        None => LoginFailure::default(),
     };
     return login_failure.encode(stream).await;
 }

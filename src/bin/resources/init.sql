@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS Users (
 CREATE TABLE IF NOT EXISTS Responses (
     id SERIAL,
     version_name TEXT,
-    protocol TEXT,
+    protocol BOOLEAN,
     hover_text TEXT[],
     max_players INTEGER,
     players_online INTEGER,
