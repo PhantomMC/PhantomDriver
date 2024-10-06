@@ -43,9 +43,12 @@ impl FromSql<Arc<UuidPicker>> for Status {
         let max_players = row.get("max_players");
         let players_online = row.get("players_online");
         let players = Players::compile(max_players, players_online, hover_text, extra);
-        let favicon_bytes: &[u8] = row.get("favicon");
-        let favicon = status::read_favicon_to_base64(favicon_bytes).await?;
-        let enforces_secure_chat = row.get("enforce_secure_chat");
+        let favicon_bytes: Option<&[u8]> = row.get("favicon");
+        let favicon = match favicon_bytes {
+            Some(bytes) => Some(status::read_favicon_to_base64(bytes).await?),
+            None => None,
+        };
+        let enforces_secure_chat = row.get("secure_chat");
         let description: Text = serde_json::from_value(row.get("motd"))
             .map_err(|error| Error::new(ErrorKind::Other, error))?;
 
@@ -53,7 +56,7 @@ impl FromSql<Arc<UuidPicker>> for Status {
             version,
             players,
             description,
-            favicon: Some(favicon),
+            favicon: favicon,
             enforces_secure_chat,
         });
     }
