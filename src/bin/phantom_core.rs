@@ -78,11 +78,14 @@ pub async fn main() {
             }
             continue;
         }
-        tokio::task::spawn(handle_connection(
-            stream.unwrap().0,
-            client_arc.clone(),
-            uuid_gen.clone(),
-        ));
+        let clone1 = client_arc.clone();
+        let clone2 = uuid_gen.clone();
+        tokio::task::spawn(async move {
+            let result = handle_connection(stream.unwrap().0, clone1, clone2).await;
+            if let Err(error) = result {
+                println!("{error}")
+            }
+        });
     }
 }
 

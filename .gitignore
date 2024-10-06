@@ -4,3 +4,4 @@ debug/
 target/
 **/*.rs.bk
 *.pdb
+.vscode

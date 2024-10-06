@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS responses (
     disconnect_msg JSON
 );
 
-CREATE TABLE IF NOT EXISTS adress_names (
+CREATE TABLE IF NOT EXISTS address_names (
     address_name TEXT PRIMARY KEY,
     user_id INTEGER,
     response_id INTEGER,
