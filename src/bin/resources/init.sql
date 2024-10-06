@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS responses (
     players_online INTEGER,
     favicon BYTEA,
     secure_chat BOOLEAN,
-    motd JSON,
-    disconnect_msg JSON
+    motd JSONB,
+    disconnect_msg JSONB
 );
 
 CREATE TABLE IF NOT EXISTS address_names (
