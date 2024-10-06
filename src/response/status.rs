@@ -56,9 +56,11 @@ impl Encodable for Status {
     }
 }
 
-pub async fn read_favicon_to_base64(mut file: impl AsyncReadExt + Unpin) -> Result<String, Error> {
+pub async fn read_favicon_to_base64(
+    mut stream: impl AsyncReadExt + Unpin,
+) -> Result<String, Error> {
     let mut buffer = Vec::new();
-    file.read(&mut buffer).await?;
+    stream.read(&mut buffer).await?;
     return Ok(format!(
         "data:image/png;base64,{}",
         BASE64_STANDARD.encode(buffer)

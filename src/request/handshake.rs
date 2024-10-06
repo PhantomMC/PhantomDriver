@@ -12,7 +12,7 @@ pub struct Handshake {
 impl Decodable for Handshake {
     async fn decode<S: AsyncReadExt + Unpin>(stream: &mut S) -> Result<Self, std::io::Error> {
         let protocol_version = i32::decode(stream).await?;
-        let server_address = String::decode(stream).await?;
+        let server_address = String::decode(stream).await?.to_lowercase();
         let server_port = u16::fixed_decode(stream).await?;
         let next_state = i32::decode(stream).await?;
 
