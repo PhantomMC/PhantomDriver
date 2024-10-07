@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS responses (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER,
     version_name TEXT,
     protocol BOOLEAN,
     hover_text TEXT[],
@@ -14,6 +15,9 @@ CREATE TABLE IF NOT EXISTS responses (
     secure_chat BOOLEAN,
     motd JSONB,
     disconnect_msg JSONB
+    CONSTRAINT users_fk 
+        FOREIGN KEY(user_id)
+            REFERENCES users(id),
 );
 
 CREATE TABLE IF NOT EXISTS address_names (
